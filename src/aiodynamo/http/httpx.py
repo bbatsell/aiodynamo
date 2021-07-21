@@ -28,22 +28,21 @@ class HTTPX(HTTP):
         self, *, url: URL, headers: Optional[Headers] = None, timeout: Timeout
     ) -> bytes:
         with wrap_errors():
-            # FIXME: the `or {}` is not needed but httpx type hints are wrong
-            response = await self.client.get(
-                str(url), headers=headers or {}, timeout=timeout
-            )
+            response = await self.client.get(str(url), headers=headers, timeout=timeout)
             if response.status_code >= 400:
                 raise RequestFailed()
-            return await response.aread()
+            return cast(bytes, await response.aread())
 
     async def post(
         self, *, url: URL, body: bytes, headers: Optional[Headers] = None
     ) -> Dict[str, Any]:
         with wrap_errors():
-            # FIXME: the `or {}` is not needed but httpx type hints are wrong
-            response = await self.client.post(
-                str(url), data=body, headers=headers or {}
-            )
+            try:
+                response = await self.client.post(
+                    str(url), content=body, headers=headers
+                )
+            except TypeError:
+                response = await self.client.post(str(url), data=body, headers=headers)
             if response.status_code >= 400:
                 raise exception_from_response(
                     response.status_code, await response.aread()
